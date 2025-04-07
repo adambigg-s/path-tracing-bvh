@@ -17,6 +17,7 @@ pub struct Vec3 {
     pub z: Float,
 }
 
+#[allow(dead_code)]
 impl Vec3 {
     pub const TOLERANCE: f32 = SMALL;
 
@@ -30,16 +31,6 @@ impl Vec3 {
 
     pub fn random() -> Self {
         Vec3::build(random() - 0.5, random() - 0.5, random() - 0.5)
-    }
-
-    pub fn random_unit_vector() -> Self {
-        loop {
-            let candidate = Vec3::random();
-            let squared_magnitude = candidate.inner_product(&candidate);
-            if Self::TOLERANCE < squared_magnitude {
-                return candidate / squared_magnitude.sqrt();
-            }
-        }
     }
 
     pub fn inner_product(&self, other: &Self) -> Float {
@@ -58,7 +49,7 @@ impl Vec3 {
         self.inner_product(self).sqrt()
     }
 
-    pub fn norm(&self) -> Self {
+    pub fn normalized(&self) -> Self {
         *self / self.length()
     }
 
@@ -68,6 +59,68 @@ impl Vec3 {
 
     pub fn mul_component(&self, other: &Self) -> Self {
         Vec3::build(self.x * other.x, self.y * other.y, self.z * other.z)
+    }
+
+    pub fn rotate_x_inplace(&mut self, angle: Float) {
+        let Vec3 { x, y, z } = *self;
+        let (sin, cos) = angle.sin_cos();
+        self.x = x;
+        self.y = y * cos + z * -sin;
+        self.z = y * sin + z * cos;
+    }
+
+    pub fn rotate_y_inplace(&mut self, angle: Float) {
+        let Vec3 { x, y, z } = *self;
+        let (sin, cos) = angle.sin_cos();
+        self.x = x * cos + z * sin;
+        self.y = y;
+        self.z = x * -sin + z * cos;
+    }
+
+    pub fn rotate_z_inplace(&mut self, angle: Float) {
+        let Vec3 { x, y, z } = *self;
+        let (sin, cos) = angle.sin_cos();
+        self.x = x * cos + y * -sin;
+        self.y = x * sin + y * cos;
+        self.z = z;
+    }
+
+    pub fn rotate_x(&self, angle: Float) -> Self {
+        let Vec3 { x, y, z } = *self;
+        let (sin, cos) = angle.sin_cos();
+        Vec3::build(x, y * cos + z * -sin, y * sin + z * cos)
+    }
+
+    pub fn rotate_y(&self, angle: Float) -> Self {
+        let Vec3 { x, y, z } = *self;
+        let (sin, cos) = angle.sin_cos();
+        Vec3::build(x * cos + z * sin, y, x * -sin + z * cos)
+    }
+
+    pub fn rotate_z(&self, angle: Float) -> Self {
+        let Vec3 { x, y, z } = *self;
+        let (sin, cos) = angle.sin_cos();
+        Vec3::build(x * cos + y * -sin, x * sin + y * cos, z)
+    }
+
+    pub fn random_unit_vector() -> Self {
+        loop {
+            let candidate = Vec3::random();
+            let squared_magnitude = candidate.inner_product(&candidate);
+            if Self::TOLERANCE < squared_magnitude {
+                return candidate / squared_magnitude.sqrt();
+            }
+        }
+    }
+
+    pub fn random_on_hemisphere(norm: &Vec3) -> Self {
+        let candidate = Self::random_unit_vector();
+        if candidate.inner_product(norm) > 0. {
+            candidate
+        }
+        else {
+            -candidate
+        }
     }
 
     pub fn reflect_around(&self, axis: &Vec3) -> Self {

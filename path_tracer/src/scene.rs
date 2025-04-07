@@ -57,3 +57,9 @@ impl Scene {
         hit_anything
     }
 }
+
+impl Default for Scene {
+    fn default() -> Self {
+        Self::new()
+    }
+}

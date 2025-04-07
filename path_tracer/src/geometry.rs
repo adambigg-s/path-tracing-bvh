@@ -4,7 +4,6 @@ use crate::ray_hit::Hittable;
 use crate::ray_hit::Ray;
 use crate::utils::Float;
 use crate::utils::Interval;
-use crate::utils::SMALL;
 use crate::vector::Vec3;
 
 pub enum Geometry {
@@ -90,7 +89,7 @@ impl Hittable for Triangle {
         let pvector = ray.direction.cross_product(&edge2);
         let determinant = edge1.inner_product(&pvector);
 
-        if Interval::build(-SMALL, SMALL).contains(determinant) {
+        if Interval::near_zero().contains(determinant) {
             return false;
         }
 
@@ -117,7 +116,7 @@ impl Hittable for Triangle {
 
         record.point = ray.at_time(time);
         record.ray_in = ray.direction;
-        record.set_face_normal(&edge1.cross_product(&edge2));
+        record.set_face_normal(&edge1.cross_product(&edge2).normalized());
         record.intersection_time = time;
         record.interval.max = record.intersection_time;
         record.material = self.material;

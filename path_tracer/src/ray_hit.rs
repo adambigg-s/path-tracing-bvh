@@ -1,7 +1,7 @@
+use crate::materials::Material;
 use crate::utils::Float;
 use crate::utils::Interval;
 use crate::utils::INFIN;
-use crate::Material;
 use crate::Vec3;
 
 pub trait Hittable {

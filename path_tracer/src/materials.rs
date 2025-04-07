@@ -69,7 +69,7 @@ impl Metal {
 
 impl Scatter for Metal {
     fn scatter(&self, hitrecord: &HitRecord, record: &mut ScatterRecord) -> bool {
-        let mut reflected = hitrecord.ray_in.reflect_around(&hitrecord.normal).norm();
+        let mut reflected = hitrecord.ray_in.reflect_around(&hitrecord.normal).normalized();
         reflected += Vec3::random_unit_vector() * self.fuzzy;
         record.scattered = Ray::build(hitrecord.point, reflected);
         record.attenuation = self.albedo;
@@ -103,7 +103,7 @@ impl Scatter for Glass {
         else {
             self.refraction_index
         };
-        let unit_direction = hitrecord.ray_in.norm();
+        let unit_direction = hitrecord.ray_in.normalized();
         let cos = -unit_direction.inner_product(&hitrecord.normal).min(1.);
         let sin = (1. - cos * cos).sqrt();
         let direction = if refraction_index * sin > 1. || self.reflectance(cos) > random() {

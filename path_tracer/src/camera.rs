@@ -1,8 +1,12 @@
-use std::f32::consts::PI;
 use std::fs::File;
 use std::io;
 use std::io::BufWriter;
 use std::io::Write;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
 
 use rayon::iter::IndexedParallelIterator;
 use rayon::iter::IntoParallelRefMutIterator;
@@ -11,16 +15,17 @@ use rayon::iter::ParallelIterator;
 use crate::ray_hit::Ray;
 use crate::scene::Scene;
 use crate::utils::packed_color;
+use crate::utils::unpack_color;
 use crate::utils::Float;
 use crate::utils::Int;
 use crate::vector::Vec3;
 use crate::Buffer;
 
-#[allow(dead_code)]
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Camera {
     pub height: Int,
     pub width: Int,
+    pub upscale: Int,
     pub aspect_ratio: Float,
     pub fov: Float,
     pub focal_length: Float,
@@ -34,6 +39,9 @@ pub struct Camera {
     pub yaw: Float,
     pub pitch: Float,
 
+    pub move_speed: Float,
+    pub rotation_speed: Float,
+
     pub pixel_top_left: Vec3,
     pub pixel_du: Vec3,
     pub pixel_dv: Vec3,
@@ -44,22 +52,26 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn build_default(width: Int, height: Int, samples: Int, final_samples: Int) -> Self {
+    pub fn build_default(width: Int, height: Int, samples: Int, final_samples: Int, upscale: Int) -> Self {
         let aspect_ratio = width as Float / height as Float;
         let world_up = Vec3::build(0., 1., 0.);
-        let look_at = Vec3::build(0., 0., -1.);
-
-        let position = Vec3::build(0., 0., 1.);
-        let front = look_at.norm();
+        let look_at = Vec3::build(-0.0279, 0.1455, -0.9889);
+        let position = Vec3::build(2.009, 9.556, -20.757);
+        let front = look_at.normalized();
         let up = world_up;
 
-        let fov = 45.;
+        let fov = 55.;
         let focal_length = 1.;
-        let yaw = PI / 2.;
+        let yaw = -1.599;
+        let pitch = 0.1459;
+
+        let move_speed = 0.1;
+        let rotation_speed = 0.01;
 
         let mut camera = Camera {
             height,
             width,
+            upscale,
             aspect_ratio,
             fov,
             focal_length,
@@ -70,10 +82,14 @@ impl Camera {
             world_up,
 
             yaw,
+            pitch,
+
+            move_speed,
+            rotation_speed,
 
             samples,
             final_samples,
-            max_recursive_depth: 30,
+            max_recursive_depth: 2,
             ..Default::default()
         };
         camera.set_viewport();
@@ -104,11 +120,12 @@ impl Camera {
             self.pitch.sin(),
             self.yaw.sin() * self.pitch.cos(),
         );
-        self.front = front.norm();
-        self.right = self.world_up.cross_product(&self.front).norm();
-        self.up = self.front.cross_product(&self.right).norm();
+        self.front = front.normalized();
+        self.right = self.world_up.cross_product(&self.front).normalized();
+        self.up = self.front.cross_product(&self.right).normalized();
     }
 
+    #[allow(dead_code)]
     pub fn render_to_file(&self, file: &mut File, scene: &Scene) -> io::Result<()> {
         let printerval = self.height / 100;
 
@@ -129,6 +146,64 @@ impl Camera {
             }
         }
         writer.flush()?;
+
+        Ok(())
+    }
+
+    pub fn render_to_file_par(
+        &mut self, file: &mut File, scene: &Scene, denoise: bool, iters: usize,
+    ) -> io::Result<()> {
+        self.width *= self.upscale;
+        self.height *= self.upscale;
+        self.max_recursive_depth = 30;
+        self.set_viewport();
+
+        let total_pixels = (self.width * self.height) as usize;
+        let progress_counter = Arc::new(AtomicUsize::new(0));
+        let progress_clone = Arc::clone(&progress_counter);
+        let progress_thread = thread::spawn(move || loop {
+            let done = progress_clone.load(Ordering::Relaxed);
+            let percent = done as Float / total_pixels as Float * 100.;
+            println!("progress: {:.2}%", percent);
+
+            if done >= total_pixels {
+                break;
+            }
+
+            thread::sleep(Duration::from_millis(1000));
+        });
+
+        let mut buffer = Buffer::build(self.height as usize, self.width as usize);
+        buffer.pixels.par_iter_mut().enumerate().for_each(|(idx, pixel)| {
+            let x = (idx % buffer.width) as i32;
+            let y = (idx / buffer.width) as i32;
+
+            let mut pixel_color = Vec3::zeros();
+            (0..self.final_samples).for_each(|_| {
+                let ray = self.get_ray(x, y);
+                pixel_color += scene.get_color(&ray, self.max_recursive_depth);
+            });
+
+            *pixel = packed_color(pixel_color / self.final_samples as Float);
+
+            progress_counter.fetch_add(1, Ordering::Relaxed);
+        });
+
+        progress_thread.join().unwrap();
+
+        if denoise {
+            buffer.bilateral_denoise(iters);
+        }
+
+        let mut writer = BufWriter::with_capacity((self.width * self.height * 12) as usize, file);
+        writeln!(writer, "P3\n{} {}\n255", self.width, self.height)?;
+        for y in 0..self.height as usize {
+            for x in 0..self.width as usize {
+                let packed_color = buffer.pixels[y * buffer.width + x];
+                let pixel_color = unpack_color(packed_color);
+                self.write_pixel_gammcorr(&mut writer, pixel_color)?;
+            }
+        }
 
         Ok(())
     }

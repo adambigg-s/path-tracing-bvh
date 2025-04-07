@@ -17,12 +17,18 @@ pub struct Interval {
 }
 
 impl Interval {
+    const TOLERANCE: Float = SMALL;
+
     pub const fn build(min: Float, max: Float) -> Self {
         Interval { min, max }
     }
 
-    pub fn new_real_valued() -> Interval {
-        Interval::build(SMALL, INFIN)
+    pub fn near_zero() -> Self {
+        Interval::build(-Self::TOLERANCE, Self::TOLERANCE)
+    }
+
+    pub fn new_real_valued() -> Self {
+        Interval::build(Self::TOLERANCE, INFIN)
     }
 
     pub fn contains(&self, value: Float) -> bool {
@@ -37,7 +43,7 @@ impl Default for Interval {
 }
 
 pub fn sky_gradient(ray: &Ray) -> Vec3 {
-    let unit = ray.direction.norm();
+    let unit = ray.direction.normalized();
     let alpha = 0.5 * (unit.y + 1.);
     Vec3::build(1., 1., 1.) * (1. - alpha) + BACKGROUND_COLOR * alpha
 }
@@ -48,9 +54,17 @@ pub fn random() -> Float {
 }
 
 pub fn packed_color(color: Vec3) -> u32 {
-    let red = (color.x * 255.) as u32;
-    let green = (color.y * 255.) as u32;
-    let blue = (color.z * 255.) as u32;
+    let red = ((color.x * 255.) as u8) as u32;
+    let green = ((color.y * 255.) as u8) as u32;
+    let blue = ((color.z * 255.) as u8) as u32;
 
     (red << 16) | (green << 8) | blue
+}
+
+pub fn unpack_color(color: u32) -> Vec3 {
+    let red = ((color >> 16) & 0xff) as f32 / 255.;
+    let green = ((color >> 8) & 0xff) as f32 / 255.;
+    let blue = ((color) & 0xff) as f32 / 255.;
+
+    Vec3::build(red, green, blue)
 }
