@@ -261,3 +261,135 @@ pub fn cornell_room(scene: &mut Scene) {
     // spheres in the scene
     scene.add_sphere(Sphere::build(Vec3::build(-2.5, 1., -1.) * scaling, 1. * scaling, ideal_mirror));
 }
+
+pub fn cornell_basic(scene: &mut Scene) {
+    let red = Material::Lambertian(Lambertian::build(Vec3::build(0.65, 0.05, 0.05)));
+    let green = Material::Lambertian(Lambertian::build(Vec3::build(0.12, 0.45, 0.15)));
+    let white = Material::Lambertian(Lambertian::build(Vec3::build(0.73, 0.73, 0.73)));
+    let light = Material::Source(Source::build(Vec3::build(15., 15., 15.)));
+
+    let width = 5.0;
+
+    let floor = 0.0;
+    let ceiling = 5.5;
+    let z_min = -5.0;
+    let z_max = 5.0;
+
+    scene.add_triangle(Triangle::build(
+        Vec3::build(-width, floor, z_min),
+        Vec3::build(width, floor, z_min),
+        Vec3::build(width, floor, z_max),
+        white,
+    ));
+    scene.add_triangle(Triangle::build(
+        Vec3::build(-width, floor, z_min),
+        Vec3::build(width, floor, z_max),
+        Vec3::build(-width, floor, z_max),
+        white,
+    ));
+    scene.add_triangle(Triangle::build(
+        Vec3::build(-width, ceiling, z_min),
+        Vec3::build(width, ceiling, z_min),
+        Vec3::build(width, ceiling, z_max),
+        white,
+    ));
+    scene.add_triangle(Triangle::build(
+        Vec3::build(-width, ceiling, z_min),
+        Vec3::build(width, ceiling, z_max),
+        Vec3::build(-width, ceiling, z_max),
+        white,
+    ));
+    scene.add_triangle(Triangle::build(
+        Vec3::build(-width, floor, z_min),
+        Vec3::build(width, floor, z_min),
+        Vec3::build(width, ceiling, z_min),
+        white,
+    ));
+    scene.add_triangle(Triangle::build(
+        Vec3::build(-width, floor, z_min),
+        Vec3::build(width, ceiling, z_min),
+        Vec3::build(-width, ceiling, z_min),
+        white,
+    ));
+    scene.add_triangle(Triangle::build(
+        Vec3::build(-width, floor, z_min),
+        Vec3::build(-width, floor, z_max),
+        Vec3::build(-width, ceiling, z_max),
+        red,
+    ));
+    scene.add_triangle(Triangle::build(
+        Vec3::build(-width, floor, z_min),
+        Vec3::build(-width, ceiling, z_max),
+        Vec3::build(-width, ceiling, z_min),
+        red,
+    ));
+    scene.add_triangle(Triangle::build(
+        Vec3::build(width, floor, z_min),
+        Vec3::build(width, floor, z_max),
+        Vec3::build(width, ceiling, z_max),
+        green,
+    ));
+    scene.add_triangle(Triangle::build(
+        Vec3::build(width, floor, z_min),
+        Vec3::build(width, ceiling, z_max),
+        Vec3::build(width, ceiling, z_min),
+        green,
+    ));
+
+    scene.add_triangle(Triangle::build(
+        Vec3::build(-1.0, ceiling - 0.01, -1.0),
+        Vec3::build(1.0, ceiling - 0.01, -1.0),
+        Vec3::build(1.0, ceiling - 0.01, 1.0),
+        light,
+    ));
+    scene.add_triangle(Triangle::build(
+        Vec3::build(-1.0, ceiling - 0.01, -1.0),
+        Vec3::build(1.0, ceiling - 0.01, 1.0),
+        Vec3::build(-1.0, ceiling - 0.01, 1.0),
+        light,
+    ));
+
+    let p0 = Vec3::build(-2.5, floor, 2.5);
+    let p1 = Vec3::build(-0.5, floor, 2.5);
+    let p2 = Vec3::build(-0.5, floor, 0.5);
+    let p3 = Vec3::build(-2.5, floor, 0.5);
+    let height1 = 1.5;
+    let p4 = p0 + Vec3::build(0., height1, 0.);
+    let p5 = p1 + Vec3::build(0., height1, 0.);
+    let p6 = p2 + Vec3::build(0., height1, 0.);
+    let p7 = p3 + Vec3::build(0., height1, 0.);
+    scene.add_triangle(Triangle::build(p0, p1, p2, white));
+    scene.add_triangle(Triangle::build(p0, p2, p3, white));
+    scene.add_triangle(Triangle::build(p4, p5, p6, white));
+    scene.add_triangle(Triangle::build(p4, p6, p7, white));
+    scene.add_triangle(Triangle::build(p3, p2, p6, white));
+    scene.add_triangle(Triangle::build(p3, p6, p7, white));
+    scene.add_triangle(Triangle::build(p0, p1, p5, white));
+    scene.add_triangle(Triangle::build(p0, p5, p4, white));
+    scene.add_triangle(Triangle::build(p0, p3, p7, white));
+    scene.add_triangle(Triangle::build(p0, p7, p4, white));
+    scene.add_triangle(Triangle::build(p1, p2, p6, white));
+    scene.add_triangle(Triangle::build(p1, p6, p5, white));
+
+    let q0 = Vec3::build(0.5, floor, -2.0);
+    let q1 = Vec3::build(2.3, floor, -2.0);
+    let q2 = Vec3::build(2.3, floor, -0.2);
+    let q3 = Vec3::build(0.5, floor, -0.2);
+    let height2 = 3.0;
+    let q4 = q0 + Vec3::build(0., height2, 0.);
+    let q5 = q1 + Vec3::build(0., height2, 0.);
+    let q6 = q2 + Vec3::build(0., height2, 0.);
+    let q7 = q3 + Vec3::build(0., height2, 0.);
+    scene.add_triangle(Triangle::build(q0, q1, q2, white));
+    scene.add_triangle(Triangle::build(q0, q2, q3, white));
+    scene.add_triangle(Triangle::build(q4, q5, q6, white));
+    scene.add_triangle(Triangle::build(q4, q6, q7, white));
+    scene.add_triangle(Triangle::build(q3, q2, q6, white));
+    scene.add_triangle(Triangle::build(q3, q6, q7, white));
+    scene.add_triangle(Triangle::build(q0, q1, q5, white));
+    scene.add_triangle(Triangle::build(q0, q5, q4, white));
+    scene.add_triangle(Triangle::build(q0, q3, q7, white));
+    scene.add_triangle(Triangle::build(q0, q7, q4, white));
+    scene.add_triangle(Triangle::build(q1, q2, q6, white));
+    scene.add_triangle(Triangle::build(q1, q6, q5, white));
+}

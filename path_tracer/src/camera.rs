@@ -56,8 +56,8 @@ impl Camera {
     pub fn build_default(width: Int, height: Int, samples: Int, final_samples: Int, upscale: Int) -> Self {
         let aspect_ratio = width as Float / height as Float;
         let world_up = Vec3::build(0., 1., 0.);
-        let look_at = Vec3::build(-0.0279, 0.1455, -0.9889);
-        let position = Vec3::build(2.009, 9.556, -20.757);
+        let look_at = Vec3::build(0., 0., 1.);
+        let position = Vec3::build(0., 2., 7.);
         let front = look_at.normalized();
         let up = world_up;
 
@@ -173,7 +173,7 @@ impl Camera {
                 break;
             }
 
-            thread::sleep(Duration::from_millis(60000));
+            thread::sleep(Duration::from_millis(1000));
         });
 
         let mut buffer = Buffer::build(self.height as usize, self.width as usize);
@@ -263,3 +263,9 @@ impl Camera {
         Ok(())
     }
 }
+
+// let yaw = 3.141934 / 2.;
+// let pitch = 0.;
+// let look_at = Vec3::build(-0.0279, 0.1455, -0.9889);
+// let position = Vec3::build(2.009, 9.556, -20.757);
+// let front = look_at.normalized();
