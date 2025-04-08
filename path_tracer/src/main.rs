@@ -21,12 +21,12 @@ use scene::Scene;
 use utils::Int;
 use vector::Vec3;
 
-const WIDTH: Int = 720 / UPSCALE;
-const HEIGHT: Int = 480 / UPSCALE;
+const WIDTH: Int = 1920 / UPSCALE;
+const HEIGHT: Int = 1080 / UPSCALE;
 const UPSCALE: Int = 5;
 
 fn main() {
-    let mut camera = Camera::build_default(WIDTH, HEIGHT, 5, 500, UPSCALE);
+    let mut camera = Camera::build_default(WIDTH, HEIGHT, 20, 1000, UPSCALE);
     let mut scene = Scene::new();
     debug_scenes::cornell_room(&mut scene);
 
@@ -49,7 +49,7 @@ fn main() {
 
     println!("beginning image processing");
     let start_time = std::time::Instant::now();
-    camera.render_to_file_par(&mut file, &scene, false, 0).expect("failed rendering image: io failure");
+    camera.render_to_file_par(&mut file, &scene, true, 1).expect("failed rendering image: io failure");
     let end_time = start_time.elapsed();
     println!("process time: {} seconds\n{} minutes", end_time.as_secs_f32(), end_time.as_secs_f32() / 60.);
 }

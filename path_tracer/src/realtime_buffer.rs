@@ -27,7 +27,7 @@ impl Buffer {
     // quite terrible and needs to be refactored but it is working well now
     pub fn bilateral_denoise(&mut self, iters: usize) {
         let radius = 2;
-        let mut sigma_spatial = 1.0;
+        let mut sigma_spatial = 1.;
         let mut sigma_color = 0.1;
 
         (0..iters).for_each(|_| {
@@ -105,7 +105,7 @@ pub fn run_application(camera: &mut Camera, buffer: &mut Buffer, scene: &Scene, 
         camera.set_viewport();
         camera.render_to_buffer_par(buffer, scene);
         println!(
-            "\x1b[20Hposition: {:?} front: {:?}, yaw: {}, pitch: {}",
+            "position: {:?} front: {:?}, yaw: {}, pitch: {}",
             camera.position, camera.front, camera.yaw, camera.pitch
         );
         window

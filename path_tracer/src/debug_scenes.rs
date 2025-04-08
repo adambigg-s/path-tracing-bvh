@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::geometry::Sphere;
 use crate::geometry::Triangle;
 use crate::materials::Glass;
@@ -21,10 +23,10 @@ pub fn cornell_room(scene: &mut Scene) {
     let glass = Material::Glass(Glass::build(Vec3::build(1., 1., 1.), 1.5));
     let blue_glass = Material::Glass(Glass::build(Vec3::build(0.95, 0.95, 1.), 1.9));
 
-    let scaling = 3.0;
-    let ceiling_y = 6.0;
-    let z_min = -8.0;
-    let z_max = 8.0;
+    let scaling = 3.;
+    let ceiling_y = 6.;
+    let z_min = -8.;
+    let z_max = 8.;
 
     // floor
     scene.add_triangle(Triangle::build(
@@ -39,7 +41,6 @@ pub fn cornell_room(scene: &mut Scene) {
         Vec3::build(-5., 0., z_max) * scaling,
         lambertian_white,
     ));
-
     // ceiling
     scene.add_triangle(Triangle::build(
         Vec3::build(-5., ceiling_y, z_min) * scaling,
@@ -53,7 +54,6 @@ pub fn cornell_room(scene: &mut Scene) {
         Vec3::build(-5., ceiling_y, z_max) * scaling,
         lambertian_white,
     ));
-
     // back wall
     scene.add_triangle(Triangle::build(
         Vec3::build(-5., 0., z_min) * scaling,
@@ -68,18 +68,17 @@ pub fn cornell_room(scene: &mut Scene) {
         lambertian_white,
     ));
     scene.add_triangle(Triangle::build(
-        Vec3::build(-4.5, 0.5, z_min + 0.01) * scaling,
-        Vec3::build(4.5, 0.5, z_min + 0.01) * scaling,
-        Vec3::build(4.5, ceiling_y - 0.2, z_min + 0.01) * scaling,
+        Vec3::build(-3.8, 0.5, z_min + 0.01) * scaling,
+        Vec3::build(3.8, 0.5, z_min + 0.01) * scaling,
+        Vec3::build(3.8, ceiling_y - 0.2, z_min + 0.01) * scaling,
         mirror,
     ));
     scene.add_triangle(Triangle::build(
-        Vec3::build(-4.5, 0.5, z_min + 0.01) * scaling,
-        Vec3::build(4.5, ceiling_y - 0.5, z_min + 0.01) * scaling,
-        Vec3::build(-4.5, ceiling_y - 0.2, z_min + 0.01) * scaling,
+        Vec3::build(-3.8, 0.5, z_min + 0.01) * scaling,
+        Vec3::build(3.8, ceiling_y - 0.2, z_min + 0.01) * scaling,
+        Vec3::build(-3.8, ceiling_y - 0.2, z_min + 0.01) * scaling,
         mirror,
     ));
-
     // front wall
     scene.add_triangle(Triangle::build(
         Vec3::build(-5., 0., z_max) * scaling,
@@ -94,18 +93,17 @@ pub fn cornell_room(scene: &mut Scene) {
         lambertian_white,
     ));
     scene.add_triangle(Triangle::build(
-        Vec3::build(-4.5, 0.5, z_max - 0.01) * scaling,
-        Vec3::build(4.5, 0.5, z_max - 0.01) * scaling,
-        Vec3::build(4.5, ceiling_y - 0.2, z_max - 0.01) * scaling,
+        Vec3::build(-4.1, 0.5, z_max - 0.01) * scaling,
+        Vec3::build(4.1, 0.5, z_max - 0.01) * scaling,
+        Vec3::build(4.1, ceiling_y - 0.2, z_max - 0.01) * scaling,
         mirror,
     ));
     scene.add_triangle(Triangle::build(
-        Vec3::build(-4.5, 0.5, z_max - 0.01) * scaling,
-        Vec3::build(4.5, ceiling_y - 0.5, z_max - 0.01) * scaling,
-        Vec3::build(-4.5, ceiling_y - 0.2, z_max - 0.01) * scaling,
+        Vec3::build(-4.1, 0.5, z_max - 0.01) * scaling,
+        Vec3::build(4.1, ceiling_y - 0.2, z_max - 0.01) * scaling,
+        Vec3::build(-4.1, ceiling_y - 0.2, z_max - 0.01) * scaling,
         mirror,
     ));
-
     // left wall
     scene.add_triangle(Triangle::build(
         Vec3::build(-5., 0., z_min) * scaling,
@@ -119,7 +117,6 @@ pub fn cornell_room(scene: &mut Scene) {
         Vec3::build(-5., ceiling_y, z_min) * scaling,
         lambertian_red,
     ));
-
     // right wall
     scene.add_triangle(Triangle::build(
         Vec3::build(5., 0., z_min) * scaling,
@@ -133,7 +130,6 @@ pub fn cornell_room(scene: &mut Scene) {
         Vec3::build(5., ceiling_y, z_min) * scaling,
         lambertian_green,
     ));
-
     // light on the ceiling
     scene.add_triangle(Triangle::build(
         Vec3::build(-1.5, ceiling_y - 0.01, -1.5) * scaling,
@@ -149,7 +145,7 @@ pub fn cornell_room(scene: &mut Scene) {
     ));
 
     // prism - small
-    let base = Vec3::build(0.5, 0.0, 4.0) * scaling;
+    let base = Vec3::build(2.2, 0., -2.) * scaling;
     let width = 1.5 * scaling;
     let height = 2.5 * scaling;
     let depth = 1.5 * scaling;
@@ -181,14 +177,14 @@ pub fn cornell_room(scene: &mut Scene) {
     scene.add_triangle(Triangle::build(p1, p6, p5, lambertian_white));
 
     // glass pyramid
-    let base_center = Vec3::build(0., 0., 0.0) * scaling;
+    let base_center = Vec3::build(0., 0., 0.) * scaling;
     let base_size = 1.8 * scaling;
-    let height = 2.5 * scaling;
-    let gp0 = base_center + Vec3::build(-base_size / 2., 0., -base_size / 2.0).rotate_y(-0.1);
-    let gp1 = base_center + Vec3::build(base_size / 2., 0., -base_size / 2.0).rotate_y(-0.2);
-    let gp2 = base_center + Vec3::build(base_size / 2., 0., base_size / 2.0).rotate_y(-0.2);
-    let gp3 = base_center + Vec3::build(-base_size / 2., 0., base_size / 2.0).rotate_y(-0.2);
-    let apex = base_center + Vec3::build(0., height, 0.0).rotate_y(-0.2);
+    let height = 2. * scaling;
+    let gp0 = base_center + Vec3::build(-base_size / 2., 0., -base_size / 2.).rotate_y(-0.1);
+    let gp1 = base_center + Vec3::build(base_size / 2., 0., -base_size / 2.).rotate_y(-0.2);
+    let gp2 = base_center + Vec3::build(base_size / 2., 0., base_size / 2.).rotate_y(-0.2);
+    let gp3 = base_center + Vec3::build(-base_size / 2., 0., base_size / 2.).rotate_y(-0.2);
+    let apex = base_center + Vec3::build(0., height, 0.).rotate_y(-0.2);
     // base
     scene.add_triangle(Triangle::build(gp0, gp1, gp2, glass));
     scene.add_triangle(Triangle::build(gp0, gp2, gp3, glass));
@@ -199,7 +195,7 @@ pub fn cornell_room(scene: &mut Scene) {
     scene.add_triangle(Triangle::build(gp3, gp0, apex, glass));
 
     // glass pillar near the small prism
-    let glass_base = Vec3::build(-1.5, 0., 2.5) * scaling;
+    let glass_base = Vec3::build(-1.6, 0., 2.5) * scaling;
     let glass_width = 0.9 * scaling;
     let glass_height = 2.1 * scaling;
     let glass_depth = 0.9 * scaling;
@@ -231,10 +227,10 @@ pub fn cornell_room(scene: &mut Scene) {
     scene.add_triangle(Triangle::build(g1, g6, g5, blue_glass));
 
     // prism tall
-    let base2 = Vec3::build(2.8, 0.0, -2.0) * scaling;
-    let width2 = 1. * scaling;
+    let base2 = Vec3::build(2.1, 0., 3.5) * scaling;
+    let width2 = 1.2 * scaling;
     let height2 = 4. * scaling;
-    let depth2 = 1. * scaling;
+    let depth2 = 1.2 * scaling;
     let q0 = base2;
     let q1 = base2 + Vec3::build(width2, 0., 0.).rotate_y(-0.2);
     let q2 = base2 + Vec3::build(width2, 0., depth2).rotate_y(-0.2);

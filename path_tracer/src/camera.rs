@@ -11,6 +11,7 @@ use std::time::Duration;
 use rayon::iter::IndexedParallelIterator;
 use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelIterator;
+use rayon::slice::ParallelSliceMut;
 
 use crate::ray_hit::Ray;
 use crate::scene::Scene;
@@ -62,11 +63,13 @@ impl Camera {
 
         let fov = 55.;
         let focal_length = 1.;
-        let yaw = -1.599;
+        let yaw = -1.559;
         let pitch = 0.1459;
 
         let move_speed = 0.1;
         let rotation_speed = 0.01;
+
+        let max_recursive_depth = 4;
 
         let mut camera = Camera {
             height,
@@ -89,7 +92,7 @@ impl Camera {
 
             samples,
             final_samples,
-            max_recursive_depth: 2,
+            max_recursive_depth,
             ..Default::default()
         };
         camera.set_viewport();
@@ -170,23 +173,27 @@ impl Camera {
                 break;
             }
 
-            thread::sleep(Duration::from_millis(1000));
+            thread::sleep(Duration::from_millis(60000));
         });
 
         let mut buffer = Buffer::build(self.height as usize, self.width as usize);
-        buffer.pixels.par_iter_mut().enumerate().for_each(|(idx, pixel)| {
-            let x = (idx % buffer.width) as i32;
-            let y = (idx / buffer.width) as i32;
+        let chunk_size = buffer.width;
+        buffer.pixels.par_chunks_mut(chunk_size).enumerate().for_each(|(chunk_idx, chunk)| {
+            let start_idx = chunk_idx * chunk_size;
+            let chunk_length = chunk.len();
+            for (i, pixel) in chunk.iter_mut().enumerate() {
+                let idx = start_idx + i;
+                let x = (idx % buffer.width) as i32;
+                let y = (idx / buffer.width) as i32;
+                let mut pixel_color = Vec3::zeros();
+                (0..self.final_samples).for_each(|_| {
+                    let ray = self.get_ray(x, y);
+                    pixel_color += scene.get_color(&ray, self.max_recursive_depth);
+                });
 
-            let mut pixel_color = Vec3::zeros();
-            (0..self.final_samples).for_each(|_| {
-                let ray = self.get_ray(x, y);
-                pixel_color += scene.get_color(&ray, self.max_recursive_depth);
-            });
-
-            *pixel = packed_color(pixel_color / self.final_samples as Float);
-
-            progress_counter.fetch_add(1, Ordering::Relaxed);
+                *pixel = packed_color(pixel_color / self.final_samples as Float);
+            }
+            progress_counter.fetch_add(chunk_length, Ordering::Relaxed);
         });
 
         progress_thread.join().unwrap();
