@@ -6,6 +6,7 @@ use crate::scene::Scene;
 use crate::utils::packed_color;
 use crate::utils::unpack_color;
 use crate::utils::Float;
+use crate::utils::Int;
 use crate::utils::SMALL;
 use crate::vector::Vec3;
 
@@ -26,7 +27,7 @@ impl Buffer {
     }
 
     // quite terrible and needs to be refactored but it is working well now
-    pub fn bilateral_denoise(&mut self, iters: usize) {
+    pub fn bilateral_denoise(&mut self, iters: Int) {
         let radius = 3;
         let mut sigma_spatial = 2.0;
         let mut sigma_color = 0.1;
@@ -44,13 +45,16 @@ impl Buffer {
                     let mut color = Vec3::zeros();
                     let mut weight_sum = 0.;
 
-                    (-(radius as isize)..=radius as isize).for_each(|dy| {
-                        (-(radius as isize)..=radius as isize).for_each(|dx| {
+                    for dy in -(radius as isize)..=radius as isize {
+                        for dx in -(radius as isize)..=radius as isize {
                             let ny = (y as isize + dy) as usize;
                             let nx = (x as isize + dx) as usize;
                             let idx = ny * self.width + nx;
 
                             let neighbor_color_input = unpack_color(self.pixels[idx]);
+                            if neighbor_color_input.near_zero() {
+                                continue;
+                            }
                             let neighbor_color_guidance = unpack_color(guidance_buffer.pixels[idx]);
 
                             let spatial_dist = (dx * dx + dy * dy) as Float;
@@ -63,8 +67,8 @@ impl Buffer {
 
                             color += neighbor_color_input * weight;
                             weight_sum += weight;
-                        });
-                    });
+                        }
+                    }
                     let filtered_color = color / weight_sum.max(SMALL);
                     result[center_idx] = packed_color(filtered_color);
                 }
@@ -135,12 +139,13 @@ pub fn run_application(camera: &mut Camera, buffer: &mut Buffer, scene: &Scene, 
         }
         camera.set_viewport();
         camera.render_to_buffer_par(buffer, scene);
+        buffer.bilateral_denoise(camera.denoise_iters);
+        window
+            .update_with_buffer(&buffer.pixels, buffer.width, buffer.height)
+            .expect("error updating window");
         println!(
             "position: {:?} front: {:?}, yaw: {}, pitch: {}",
             camera.position, camera.front, camera.yaw, camera.pitch
         );
-        window
-            .update_with_buffer(&buffer.pixels, buffer.width, buffer.height)
-            .expect("error updating window");
     }
 }

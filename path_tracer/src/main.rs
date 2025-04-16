@@ -21,12 +21,27 @@ use scene::Scene;
 use utils::Int;
 use vector::Vec3;
 
-const WIDTH: Int = 720 / UPSCALE;
-const HEIGHT: Int = 480 / UPSCALE;
+const WIDTH: Int = 1920 / UPSCALE;
+const HEIGHT: Int = 1080 / UPSCALE;
 const UPSCALE: Int = 5;
 
 fn main() {
-    let mut camera = Camera::build_default(WIDTH, HEIGHT, 30, 1, UPSCALE);
+    let mut camera = Camera {
+        height: HEIGHT,
+        width: WIDTH,
+        position: Vec3::build(0., 2., 7.),
+        fov: 55.,
+        focal_length: 1.,
+        yaw: 3.141934 / 2.,
+        pitch: 0.,
+        move_speed: 0.15,
+        rotation_speed: 0.03,
+        max_recursive_depth: 4,
+        denoise_iters: 1,
+        samples: 1,
+        ..Default::default()
+    };
+    camera.build_params();
     let mut scene = Scene::new();
     debug_scenes::cornell_basic(&mut scene);
 
@@ -47,9 +62,14 @@ fn main() {
 
     run_application(&mut camera, &mut buffer, &scene, &mut window);
 
+    camera.height *= UPSCALE;
+    camera.width *= UPSCALE;
+    camera.samples = 30;
+    camera.max_recursive_depth = 30;
+    camera.build_params();
     println!("beginning image processing");
     let start_time = std::time::Instant::now();
-    camera.render_to_file_par(&mut file, &scene, true, 3).expect("failed rendering image: io failure");
+    camera.render_to_file_par(&mut file, &scene).expect("failed rendering image: io failure");
     let end_time = start_time.elapsed();
     println!("process time: {} seconds\n{} minutes", end_time.as_secs_f32(), end_time.as_secs_f32() / 60.);
 }

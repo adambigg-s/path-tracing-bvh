@@ -17,6 +17,7 @@ use crate::ray_hit::Ray;
 use crate::scene::Scene;
 use crate::utils::packed_color;
 use crate::utils::unpack_color;
+use crate::utils::write_pixel_gammcorr;
 use crate::utils::Float;
 use crate::utils::Int;
 use crate::vector::Vec3;
@@ -26,7 +27,6 @@ use crate::Buffer;
 pub struct Camera {
     pub height: Int,
     pub width: Int,
-    pub upscale: Int,
     pub aspect_ratio: Float,
     pub fov: Float,
     pub focal_length: Float,
@@ -48,60 +48,21 @@ pub struct Camera {
     pub pixel_dv: Vec3,
 
     pub samples: Int,
-    pub final_samples: Int,
     pub max_recursive_depth: Int,
+    pub denoise_iters: Int,
 }
 
 impl Camera {
-    pub fn build_default(width: Int, height: Int, samples: Int, final_samples: Int, upscale: Int) -> Self {
-        let aspect_ratio = width as Float / height as Float;
-        let world_up = Vec3::build(0., 1., 0.);
-        let look_at = Vec3::build(0., 0., 1.);
-        let position = Vec3::build(0., 2., 7.);
-        let front = look_at.normalized();
-        let up = world_up;
-
-        let fov = 55.;
-        let focal_length = 1.;
-        let yaw = -1.559;
-        let pitch = 0.1459;
-
-        let move_speed = 0.1;
-        let rotation_speed = 0.01;
-
-        let max_recursive_depth = 4;
-
-        let mut camera = Camera {
-            height,
-            width,
-            upscale,
-            aspect_ratio,
-            fov,
-            focal_length,
-
-            position,
-            front,
-            up,
-            world_up,
-
-            yaw,
-            pitch,
-
-            move_speed,
-            rotation_speed,
-
-            samples,
-            final_samples,
-            max_recursive_depth,
-            ..Default::default()
-        };
-        camera.set_viewport();
-
-        camera
+    pub fn build_params(&mut self) {
+        self.aspect_ratio = self.width as Float / self.height as Float;
+        self.world_up = Vec3::build(0., 1., 0.);
+        self.front = Vec3::build(0., 0., 1.).normalized();
+        self.set_viewport();
     }
 
     pub fn set_viewport(&mut self) {
         self.update_vectors();
+        self.aspect_ratio = self.width as Float / self.height as Float;
         let height_modifier = (self.fov.to_radians() * 0.5).tan();
         let viewport_height = 2. * height_modifier * self.focal_length;
         let viewport_width = viewport_height * self.aspect_ratio;
@@ -128,39 +89,32 @@ impl Camera {
         self.up = self.front.cross_product(&self.right).normalized();
     }
 
-    #[allow(dead_code)]
-    pub fn render_to_file(&self, file: &mut File, scene: &Scene) -> io::Result<()> {
-        let printerval = self.height / 100;
+    pub fn get_ray(&self, x: Int, y: Int) -> Ray {
+        let offset = Vec3::random();
+        let pixel_sample = self.pixel_top_left
+            + (self.pixel_du * (offset.x + x as Float))
+            + (self.pixel_dv * (offset.y + y as Float));
+        let ray_direction = pixel_sample - self.position;
 
-        let mut writer = BufWriter::with_capacity((self.width * self.height * 12) as usize, file);
-        writeln!(writer, "P3\n{} {}\n255", self.width, self.height)?;
-        for y in 0..self.height {
-            for x in 0..self.width {
-                let mut pixel_color = Vec3::zeros();
-                (0..self.final_samples).for_each(|_| {
-                    let ray = self.get_ray(x, y);
-                    pixel_color += scene.get_color(&ray, self.max_recursive_depth);
-                });
-                self.write_pixel_gammcorr(&mut writer, pixel_color / self.final_samples as Float)?;
-            }
-            writeln!(writer)?;
-            if y % printerval == 0 {
-                println!("progress: {:.1}%", y as f32 / self.height as Float * 100.);
-            }
-        }
-        writer.flush()?;
-
-        Ok(())
+        Ray::build(self.position, ray_direction)
     }
 
-    pub fn render_to_file_par(
-        &mut self, file: &mut File, scene: &Scene, denoise: bool, iters: usize,
-    ) -> io::Result<()> {
-        self.width *= self.upscale;
-        self.height *= self.upscale;
-        self.max_recursive_depth = 30;
-        self.set_viewport();
+    pub fn render_to_buffer_par(&self, buffer: &mut Buffer, scene: &Scene) {
+        buffer.pixels.par_iter_mut().enumerate().for_each(|(idx, pixel)| {
+            let x = (idx % buffer.width) as i32;
+            let y = (idx / buffer.width) as i32;
 
+            let mut pixel_color = Vec3::zeros();
+            (0..self.samples).for_each(|_| {
+                let ray = self.get_ray(x, y);
+                pixel_color += scene.get_color(&ray, self.max_recursive_depth);
+            });
+
+            *pixel = packed_color(pixel_color / self.samples as Float);
+        });
+    }
+
+    pub fn render_to_file_par(&mut self, file: &mut File, scene: &Scene) -> io::Result<()> {
         let total_pixels = (self.width * self.height) as usize;
         let progress_counter = Arc::new(AtomicUsize::new(0));
         let progress_clone = Arc::clone(&progress_counter);
@@ -186,21 +140,19 @@ impl Camera {
                 let x = (idx % buffer.width) as i32;
                 let y = (idx / buffer.width) as i32;
                 let mut pixel_color = Vec3::zeros();
-                (0..self.final_samples).for_each(|_| {
+                (0..self.samples).for_each(|_| {
                     let ray = self.get_ray(x, y);
                     pixel_color += scene.get_color(&ray, self.max_recursive_depth);
                 });
 
-                *pixel = packed_color(pixel_color / self.final_samples as Float);
+                *pixel = packed_color(pixel_color / self.samples as Float);
             }
             progress_counter.fetch_add(chunk_length, Ordering::Relaxed);
         });
 
         progress_thread.join().unwrap();
 
-        if denoise {
-            buffer.bilateral_denoise(iters);
-        }
+        buffer.bilateral_denoise(self.denoise_iters);
 
         let mut writer = BufWriter::with_capacity((self.width * self.height * 12) as usize, file);
         writeln!(writer, "P3\n{} {}\n255", self.width, self.height)?;
@@ -208,7 +160,7 @@ impl Camera {
             for x in 0..self.width as usize {
                 let packed_color = buffer.pixels[y * buffer.width + x];
                 let pixel_color = unpack_color(packed_color);
-                self.write_pixel_gammcorr(&mut writer, pixel_color)?;
+                write_pixel_gammcorr(&mut writer, pixel_color)?;
             }
         }
 
@@ -229,43 +181,34 @@ impl Camera {
         }
     }
 
-    pub fn render_to_buffer_par(&self, buffer: &mut Buffer, scene: &Scene) {
-        buffer.pixels.par_iter_mut().enumerate().for_each(|(idx, pixel)| {
-            let x = (idx % buffer.width) as i32;
-            let y = (idx / buffer.width) as i32;
+    #[allow(dead_code)]
+    pub fn render_to_file(&self, file: &mut File, scene: &Scene) -> io::Result<()> {
+        let printerval = self.height / 100;
 
-            let mut pixel_color = Vec3::zeros();
-            (0..self.samples).for_each(|_| {
-                let ray = self.get_ray(x, y);
-                pixel_color += scene.get_color(&ray, self.max_recursive_depth);
-            });
-
-            *pixel = packed_color(pixel_color / self.samples as Float);
-        });
-    }
-
-    pub fn get_ray(&self, x: Int, y: Int) -> Ray {
-        let offset = Vec3::random();
-        let pixel_sample = self.pixel_top_left
-            + (self.pixel_du * (offset.x + x as Float))
-            + (self.pixel_dv * (offset.y + y as Float));
-        let ray_direction = pixel_sample - self.position;
-
-        Ray::build(self.position, ray_direction)
-    }
-
-    pub fn write_pixel_gammcorr(&self, writer: &mut BufWriter<&mut File>, color: Vec3) -> io::Result<()> {
-        let red = (color.x.sqrt() * 255.) as u8;
-        let green = (color.y.sqrt() * 255.) as u8;
-        let blue = (color.z.sqrt() * 255.) as u8;
-        write!(writer, "{} {} {} ", red, green, blue)?;
+        let mut writer = BufWriter::with_capacity((self.width * self.height * 12) as usize, file);
+        writeln!(writer, "P3\n{} {}\n255", self.width, self.height)?;
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let mut pixel_color = Vec3::zeros();
+                (0..self.samples).for_each(|_| {
+                    let ray = self.get_ray(x, y);
+                    pixel_color += scene.get_color(&ray, self.max_recursive_depth);
+                });
+                write_pixel_gammcorr(&mut writer, pixel_color / self.samples as Float)?;
+            }
+            writeln!(writer)?;
+            if y % printerval == 0 {
+                println!("progress: {:.1}%", y as f32 / self.height as Float * 100.);
+            }
+        }
+        writer.flush()?;
 
         Ok(())
     }
 }
 
-// let yaw = 3.141934 / 2.;
-// let pitch = 0.;
+// let yaw = -1.559;
+// let pitch = 0.1459;
 // let look_at = Vec3::build(-0.0279, 0.1455, -0.9889);
 // let position = Vec3::build(2.009, 9.556, -20.757);
 // let front = look_at.normalized();

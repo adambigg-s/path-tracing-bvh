@@ -1,3 +1,8 @@
+use std::fs::File;
+use std::io;
+use std::io::BufWriter;
+use std::io::Write;
+
 use rand::Rng;
 
 use crate::ray_hit::Ray;
@@ -67,4 +72,13 @@ pub fn unpack_color(color: u32) -> Vec3 {
     let blue = ((color) & 0xff) as f32 / 255.;
 
     Vec3::build(red, green, blue)
+}
+
+pub fn write_pixel_gammcorr(writer: &mut BufWriter<&mut File>, color: Vec3) -> io::Result<()> {
+    let red = (color.x.sqrt() * 255.999) as u8;
+    let green = (color.y.sqrt() * 255.999) as u8;
+    let blue = (color.z.sqrt() * 255.999) as u8;
+    write!(writer, "{} {} {} ", red, green, blue)?;
+
+    Ok(())
 }
